@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f3f1ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111317" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="カギメモ">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>カギメモ</title>
+<script src="app.js" defer></script>
+</head>
+<body>
+<noscript>JavaScriptを有効にしてください。</noscript>
+
+<!-- ようこそ -->
+<section id="screen-welcome" class="screen center" hidden>
+  <div class="hero">
+    <img src="icons/icon-192.png" alt="" class="hero-icon">
+    <h1>カギメモ</h1>
+    <p class="lead">ID・パスワードを端末の中だけで暗号化して保管します。<br>解除はFace ID（パスキー）。</p>
+  </div>
+  <div class="stack">
+    <button class="btn primary" id="btn-start">はじめる</button>
+    <button class="btn ghost" id="btn-restore-welcome">バックアップから復元</button>
+  </div>
+  <div id="install-hint" class="note warn" hidden>
+    Safariの共有ボタン →「ホーム画面に追加」から開いて使ってください。ブラウザのままだと、しばらく使わないとデータが消えることがあります。
+  </div>
+</section>
+
+<!-- セットアップ1: パスフレーズ -->
+<section id="screen-setup-pass" class="screen" hidden>
+  <header class="bar"><button class="link" data-go="welcome">戻る</button><h2>1 / 2 復旧用パスフレーズ</h2><span></span></header>
+  <div class="content">
+    <p>Face IDが使えないときや、機種変更・バックアップ復元のときに使う<strong>最後の鍵</strong>です。</p>
+    <ul class="bullets">
+      <li>10文字以上。長い文章がおすすめ（例：好きな言葉を4〜5個つなげる）</li>
+      <li>忘れると<strong>誰にも復旧できません</strong>。紙に書いて保管してください</li>
+    </ul>
+    <form id="form-setup-pass" class="form" autocomplete="off">
+      <label>パスフレーズ<input id="sp-1" class="secret" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required minlength="10"></label>
+      <label>もう一度<input id="sp-2" class="secret" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+      <label class="check"><input type="checkbox" id="sp-show"> 入力内容を表示</label>
+      <p class="meter" id="sp-meter"></p>
+      <p class="error" id="sp-err"></p>
+      <button class="btn primary" type="submit">次へ</button>
+    </form>
+  </div>
+</section>
+
+<!-- セットアップ2: パスキー -->
+<section id="screen-setup-passkey" class="screen" hidden>
+  <header class="bar"><button class="link" data-go="setup-pass">戻る</button><h2>2 / 2 Face ID</h2><span></span></header>
+  <div class="content">
+    <p>パスキーを作成して、Face IDで解除できるようにします。パスキーはiCloudキーチェーンに保存されます。</p>
+    <div class="stack">
+      <button class="btn primary" id="btn-sp-register">Face ID（パスキー）を登録</button>
+      <button class="btn primary" id="btn-sp-activate" hidden>Face IDで有効化（もう一度）</button>
+      <button class="btn ghost" id="btn-sp-skip">Face IDを使わずに始める</button>
+    </div>
+    <p class="error" id="pk-err"></p>
+  </div>
+</section>
+
+<!-- ロック -->
+<section id="screen-lock" class="screen center" hidden>
+  <div class="hero">
+    <div class="lock-glyph" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="44" height="44"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4.5" y="10" width="15" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="15.5" r="1.6" fill="currentColor"/></svg>
+    </div>
+    <h1>ロック中</h1>
+  </div>
+  <div class="stack">
+    <button class="btn primary" id="btn-unlock-face">Face IDで解除</button>
+    <button class="btn ghost" id="btn-unlock-pass">パスフレーズで解除</button>
+  </div>
+  <p class="error" id="lock-err"></p>
+</section>
+
+<!-- メイン -->
+<section id="screen-main" class="screen" hidden>
+  <header class="bar main-bar">
+    <button class="icon-btn" id="btn-lock" aria-label="ロック">
+      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4.5" y="10" width="15" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    </button>
+    <h2>カギメモ</h2>
+    <button class="icon-btn" id="btn-settings" aria-label="設定">
+      <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+  <div class="search-wrap">
+    <input id="search" type="search" placeholder="検索（名前・ID・URL・メモ）" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div id="banner" class="note" hidden></div>
+  <ul id="list" class="list"></ul>
+  <div id="empty" class="empty" hidden>
+    <p>まだ登録がありません。</p>
+    <p class="sub">右下の ＋ から追加できます。</p>
+  </div>
+  <button class="fab" id="btn-add" aria-label="追加">
+    <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+  </button>
+</section>
+
+<!-- 設定 -->
+<section id="screen-settings" class="screen" hidden>
+  <header class="bar"><button class="link" id="btn-settings-back">完了</button><h2>設定</h2><span></span></header>
+  <div class="content">
+    <h3 class="group">セキュリティ</h3>
+    <div class="card">
+      <label class="row-set">操作がないときの自動ロック
+        <select id="set-idle">
+          <option value="60">1分</option><option value="180">3分</option><option value="300">5分</option><option value="600">10分</option>
+        </select>
+      </label>
+      <label class="row-set">他のアプリに切り替えたらロック
+        <select id="set-hide">
+          <option value="0">すぐ</option><option value="30">30秒後</option><option value="60">1分後</option><option value="180">3分後</option>
+        </select>
+      </label>
+      <label class="row-set">コピーした内容の消去
+        <select id="set-clip">
+          <option value="30">30秒後</option><option value="60">1分後</option><option value="120">2分後</option><option value="0">消去しない</option>
+        </select>
+      </label>
+    </div>
+
+    <h3 class="group">鍵</h3>
+    <div class="card">
+      <div class="row-set"><span>Face ID</span><span id="face-status" class="muted"></span></div>
+      <button class="row-btn" id="btn-reregister">Face ID（パスキー）を登録し直す</button>
+      <button class="row-btn" id="btn-change-pass">パスフレーズを変更</button>
+    </div>
+
+    <h3 class="group">バックアップ</h3>
+    <div class="card">
+      <button class="row-btn" id="btn-export">暗号化バックアップを書き出す</button>
+      <button class="row-btn" id="btn-restore">バックアップから復元</button>
+      <p class="muted small" id="backup-status"></p>
+    </div>
+    <p class="muted small pad">バックアップは暗号化されたままのファイルです。「ファイル」アプリやiCloud Driveに保存してください。復元にはパスフレーズが必要です。</p>
+
+    <h3 class="group">危険な操作</h3>
+    <div class="card">
+      <button class="row-btn danger" id="btn-wipe">この端末のデータをすべて削除</button>
+    </div>
+    <p class="muted small pad" id="app-version"></p>
+  </div>
+</section>
+
+<input type="file" id="file-restore" accept="application/json,.json" hidden>
+
+<!-- 詳細 -->
+<dialog id="dlg-detail" class="sheet">
+  <div class="sheet-head">
+    <button class="link" data-close>閉じる</button>
+    <h2 id="d-title"></h2>
+    <button class="link" id="btn-d-edit">編集</button>
+  </div>
+  <div class="sheet-body">
+    <div class="field" id="d-user-row">
+      <div class="f-label">ID</div>
+      <div class="f-line"><span class="f-value" id="d-user"></span><button class="copy" data-copy="username">コピー</button></div>
+    </div>
+    <div class="field" id="d-pass-row">
+      <div class="f-label">パスワード</div>
+      <div class="f-line"><span class="f-value mono" id="d-pass"></span><button class="link small" id="btn-d-reveal">表示</button><button class="copy" data-copy="password">コピー</button></div>
+    </div>
+    <div class="field" id="d-url-row">
+      <div class="f-label">URL</div>
+      <div class="f-line"><a class="f-value" id="d-url" target="_blank" rel="noopener noreferrer"></a><button class="copy" data-copy="url">コピー</button></div>
+    </div>
+    <div class="field" id="d-note-row">
+      <div class="f-label">メモ</div>
+      <div class="f-value note-text" id="d-note"></div>
+    </div>
+    <p class="muted small" id="d-updated"></p>
+    <button class="btn danger-ghost" id="btn-d-delete">この項目を削除</button>
+  </div>
+</dialog>
+
+<!-- 編集 -->
+<dialog id="dlg-edit" class="sheet">
+  <form id="form-edit" autocomplete="off">
+    <div class="sheet-head">
+      <button class="link" type="button" data-close>キャンセル</button>
+      <h2 id="e-heading">追加</h2>
+      <button class="link strong" type="submit">保存</button>
+    </div>
+    <div class="sheet-body form">
+      <label>名前<input id="e-title" type="text" placeholder="例：楽天証券" required autocomplete="off" spellcheck="false"></label>
+      <label>ID / メールアドレス<input id="e-user" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label>パスワード
+        <span class="inline">
+          <input id="e-pass" class="secret mono" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button type="button" class="link small" id="btn-e-reveal">表示</button>
+        </span>
+      </label>
+      <div class="gen">
+        <button type="button" class="btn small" id="btn-gen">強いパスワードを生成</button>
+        <select id="gen-len" aria-label="文字数"><option>16</option><option selected>20</option><option>24</option><option>32</option></select>
+        <label class="check"><input type="checkbox" id="gen-sym" checked> 記号</label>
+      </div>
+      <label>URL<input id="e-url" type="text" inputmode="url" placeholder="https://" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label>メモ<textarea id="e-note" rows="4" spellcheck="false"></textarea></label>
+    </div>
+  </form>
+</dialog>
+
+<!-- パスフレーズ入力 -->
+<dialog id="dlg-pass" class="modal">
+  <form id="form-pass" autocomplete="off">
+    <h2 id="p-title">パスフレーズ</h2>
+    <p id="p-msg" class="muted"></p>
+    <input id="p-input" class="secret" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+    <p class="error" id="p-err"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>キャンセル</button>
+      <button class="btn primary" type="submit" id="p-ok">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- パスフレーズ変更 -->
+<dialog id="dlg-newpass" class="modal">
+  <form id="form-newpass" autocomplete="off">
+    <h2>パスフレーズを変更</h2>
+    <label>今のパスフレーズ<input id="np-cur" class="secret" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+    <label>新しいパスフレーズ（10文字以上）<input id="np-1" class="secret" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required minlength="10"></label>
+    <label>もう一度<input id="np-2" class="secret" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+    <p class="error" id="np-err"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>キャンセル</button>
+      <button class="btn primary" type="submit">変更</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- タップ待ち（Face ID呼び出しにはタップが必要） -->
+<dialog id="dlg-action" class="modal">
+  <h2 id="a-title"></h2>
+  <p id="a-msg" class="muted"></p>
+  <div class="modal-actions">
+    <button class="btn ghost" type="button" id="a-cancel">キャンセル</button>
+    <button class="btn primary" type="button" id="a-ok"></button>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="veil" aria-hidden="true"></div>
+</body>
+</html>
