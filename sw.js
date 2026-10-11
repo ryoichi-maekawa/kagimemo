@@ -1,5 +1,5 @@
 // カギメモ Service Worker：オフラインでも開けるようにアプリ本体をキャッシュする（データは扱わない）
-const CACHE = 'kagimemo-v1.0.0';
+const CACHE = 'kagimemo-v1.1.0';
 const ASSETS = ['./', './index.html', './app.js', './style.css', './manifest.webmanifest',
   './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 

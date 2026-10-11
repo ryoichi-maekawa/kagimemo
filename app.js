@@ -10,7 +10,7 @@
  */
 'use strict';
 (() => {
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
   const PBKDF2_ITER = 600000;
   const MIN_PASS = 10;
   const te = new TextEncoder();
@@ -423,20 +423,21 @@
     $('#e-pass').classList.remove('reveal');
     $('#btn-e-reveal').textContent = '表示';
   }
-  function openEdit(id) {
+  function openEdit(id, copyFromId) {
     clearEditForm();
     const e = id ? findEntry(id) : null;
+    const src = e || (copyFromId ? findEntry(copyFromId) : null);
     state.current = e ? e.id : null;
-    $('#e-heading').textContent = e ? '編集' : '追加';
-    if (e) {
-      $('#e-title').value = e.title || '';
-      $('#e-user').value = e.username || '';
-      $('#e-pass').value = e.password || '';
-      $('#e-url').value = e.url || '';
-      $('#e-note').value = e.note || '';
+    $('#e-heading').textContent = e ? '編集' : (src ? '複製して追加' : '追加');
+    if (src) {
+      $('#e-title').value = e ? (src.title || '') : `${src.title || ''}（コピー）`;
+      $('#e-user').value = src.username || '';
+      $('#e-pass').value = src.password || '';
+      $('#e-url').value = src.url || '';
+      $('#e-note').value = src.note || '';
     }
     $('#dlg-edit').showModal();
-    if (!e) setTimeout(() => $('#e-title').focus(), 50);
+    if (!e) setTimeout(() => { const t = $('#e-title'); t.focus(); if (src) t.select(); }, 50);
   }
   async function saveEdit() {
     const data = {
@@ -746,6 +747,7 @@
 
     $('#btn-d-edit').addEventListener('click', () => { const id = state.current; $('#dlg-detail').close(); openEdit(id); });
     $('#btn-d-reveal').addEventListener('click', () => setPassMasked(!$('#btn-d-reveal').dataset.masked));
+    $('#btn-d-dup').addEventListener('click', () => { const id = state.current; $('#dlg-detail').close(); openEdit(null, id); });
     $('#btn-d-delete').addEventListener('click', deleteCurrent);
     $('#dlg-detail').addEventListener('close', () => { setPassMasked(true); });
     document.querySelectorAll('#dlg-detail [data-copy]').forEach((b) => {
